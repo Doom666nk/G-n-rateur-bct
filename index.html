@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Générateur d'Étiquettes BCT - 200 Bacs</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .controls {
+            max-width: 1200px;
+            margin: 0 auto 20px;
+            background: white;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+        }
+        
+        .controls-row {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        
+        .controls-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .control-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .controls label {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .controls input, .controls select {
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s;
+            background: white;
+        }
+        
+        .controls input:focus, .controls select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .controls button {
+            padding: 12px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 15px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .controls button:hover:not(:disabled) {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .controls button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        
+        .controls button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: #6c757d !important;
+        }
+        
+        .btn-secondary:hover:not(:disabled) {
+            background: #5a6268 !important;
+        }
+        
+        .btn-success {
+            background: #28a745 !important;
+        }
+        
+        .btn-success:hover:not(:disabled) {
+            background: #218838 !important;
+        }
+        
+        .page-info {
+            font-size: 15px;
+            color: #333;
+            padding: 10px 18px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 10px;
+            font-weight: 600;
+            flex-grow: 1;
+            text-align: center;
+        }
+        
+        .quick-jump {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .quick-jump button {
+            padding: 8px 14px;
+            font-size: 13px;
+            min-width: auto;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+            border-radius: 10px;
+        }
+        
+        .a4-container {
+            width: 210mm;
+            height: 297mm;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.25);
+            position: relative;
+            padding: 12mm 15mm 15mm 15mm;
+            page-break-after: always;
+            border-radius: 4px;
+        }
+        
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8mm;
+            padding-bottom: 4mm;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        .page-title {
+            font-size: 19px;
+            font-weight: 700;
+            color: #333;
+            line-height: 1.3;
+        }
+        
+        .page-number {
+            font-size: 14px;
+            font-weight: 600;
+            color: #667eea;
+            background: #f0f3ff;
+            padding: 6px 12px;
+            border-radius: 8px;
+        }
+        
+        .labels-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 7mm;
+            margin-bottom: 7mm;
+        }
+        
+        .separator {
+            grid-column: 1 / -1;
+            height: 0;
+            border-top: 3px dashed #ccc;
+            margin: 6mm 0;
+            position: relative;
+        }
+        
+        .separator::after {
+            content: '✂️';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 0 10px;
+            font-size: 18px;
+        }
+        
+        .label {
+            border: 2.5px solid #e0e0e0;
+            border-radius: 14px;
+            padding: 7mm;
+            display: flex;
+            align-items: center;
+            gap: 7mm;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            transition: all 0.3s;
+            height: 48mm;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .label::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .label:hover {
+            border-color: #667eea;
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.25);
+            transform: translateY(-2px);
+        }
+        
+        .label:hover::before {
+            opacity: 1;
+        }
+        
+        .qr-container {
+            flex-shrink: 0;
+            width: 34mm;
+            height: 34mm;
+            background: white;
+            border: 2px solid #e8e8e8;
+            border-radius: 10px;
+            padding: 2.5mm;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .qr-container canvas, .qr-container img {
+            max-width: 100%;
+            max-height: 100%;
+            image-rendering: pixelated;
+        }
+        
+        .label-text {
+            flex-grow: 1;
+            text-align: center;
+            font-size: 26px;
+            font-weight: 800;
+            color: #2c3e50;
+            letter-spacing: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .footer-note {
+            text-align: center;
+            font-size: 11px;
+            color: #999;
+            margin-top: 8mm;
+            padding-top: 4mm;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            
+            .controls {
+                display: none !important;
+            }
+            
+            .a4-container {
+                box-shadow: none;
+                margin: 0;
+                width: 210mm;
+                height: 297mm;
+                border-radius: 0;
+                page-break-after: always;
+            }
+            
+            .label:hover {
+                transform: none;
+                box-shadow: none;
+            }
+        }
+        
+        @media screen and (max-width: 900px) {
+            .a4-container {
+                width: 100%;
+                height: auto;
+                aspect-ratio: 210/297;
+            }
+            
+            .controls {
+                padding: 20px;
+            }
+            
+            .controls-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .control-group {
+                width: 100%;
+                justify-content: space-between;
+            }
+            
+            .controls button {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .quick-jump {
+                justify-content: center;
+            }
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #28a745;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 6px 25px rgba(0,0,0,0.3);
+            font-weight: 600;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <div class="controls-row">
+            <div class="control-group">
+                <label for="pageNum">Page:</label>
+                <input type="number" id="pageNum" min="1" max="100" value="1" style="width: 80px;">
+                <span style="color: #666; font-size: 14px;">/ 100</span>
+            </div>
+            
+            <button onclick="generatePage()">
+                <span>🔄</span> Générer
+            </button>
+            
+            <button onclick="prevPage()" id="btnPrev">
+                <span>←</span> Précédente
+            </button>
+            
+            <button onclick="nextPage()" id="btnNext">
+                <span>→</span> Suivante
+            </button>
+            
+            <button onclick="window.print()" class="btn-success">
+                <span>🖨️</span> Imprimer
+            </button>
+            
+            <button onclick="printAll()" class="btn-secondary">
+                <span>📄</span> Tout imprimer
+            </button>
+        </div>
+        
+        <div class="controls-row">
+            <span class="page-info" id="pageInfo"></span>
+        </div>
+        
+        <div class="controls-row">
+            <label>Accès rapide:</label>
+            <div class="quick-jump">
+                <button onclick="generatePage(1)">Page 1</button>
+                <button onclick="generatePage(10)">Page 10</button>
+                <button onclick="generatePage(25)">Page 25</button>
+                <button onclick="generatePage(50)">Page 50</button>
+                <button onclick="generatePage(75)">Page 75</button>
+                <button onclick="generatePage(100)">Page 100</button>
+            </div>
+        </div>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill" style="width: 1%"></div>
+        </div>
+    </div>
+    
+    <div class="a4-container" id="sheet"></div>
+    
+    <div class="toast" id="toast"></div>
+    
+    <script>
+        let currentPage = 1;
+        const TOTAL_PAGES = 100;
+        const TOTAL_BACS = 200;
+        
+        function getCodesForPage(page) {
+            const firstCode = (page - 1) * 2 + 1;
+            const codeX = String(firstCode).padStart(4, '0');
+            const codeY = String(firstCode + 1).padStart(4, '0');
+            return { codeX, codeY };
+        }
+        
+        function generateQRCode(text, container) {
+            container.innerHTML = '';
+            try {
+                const qr = new QRCode(container, {
+                    text: text,
+                    width: 140,
+                    height: 140,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            } catch (e) {
+                console.error('Erreur génération QR:', e);
+                container.innerHTML = '<div style="font-size: 10px; text-align: center;">Erreur QR</div>';
+            }
+        }
+        
+        function generatePage(pageNum = null) {
+            if (pageNum !== null) {
+                currentPage = pageNum;
+            } else {
+                currentPage = parseInt(document.getElementById('pageNum').value);
+            }
+            
+            if (currentPage < 1 || currentPage > TOTAL_PAGES) {
+                showToast('⚠️ Page invalide! Choisissez entre 1 et ' + TOTAL_PAGES, '#dc3545');
+                return;
+            }
+            
+            const { codeX, codeY } = getCodesForPage(currentPage);
+            const sheet = document.getElementById('sheet');
+            
+            sheet.innerHTML = `
+                <div class="page-header">
+                    <div class="page-title">
+                        Étiquettes BCT-${codeX} & BCT-${codeY}<br>
+                        <span style="font-size: 14px; color: #666; font-weight: 500;">4 exemplaires par bac - Format A4</span>
+                    </div>
+                    <div class="page-number">Page ${currentPage}/${TOTAL_PAGES}</div>
+                </div>
+                
+                <div class="labels-grid">
+                    ${Array(4).fill('').map(() => `
+                        <div class="label">
+                            <div class="qr-container" data-qr="BCT-${codeX}"></div>
+                            <div class="label-text">BCT-${codeX}</div>
+                        </div>
+                    `).join('')}
+                    <div class="separator"></div>
+                    ${Array(4).fill('').map(() => `
+                        <div class="label">
+                            <div class="qr-container" data-qr="BCT-${codeY}"></div>
+                            <div class="label-text">BCT-${codeY}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div class="footer-note">
+                    Document généré automatiquement - Bacs ${codeX} et ${codeY} sur ${TOTAL_BACS}
+                </div>
+            `;
+            
+            setTimeout(() => {
+                document.querySelectorAll('.qr-container').forEach(container => {
+                    const qrText = container.getAttribute('data-qr');
+                    generateQRCode(qrText, container);
+                });
+            }, 100);
+            
+            updateUI();
+        }
+        
+        function updateUI() {
+            const { codeX, codeY } = getCodesForPage(currentPage);
+            document.getElementById('pageNum').value = currentPage;
+            document.getElementById('pageInfo').textContent = 
+                `📍 Page ${currentPage}/${TOTAL_PAGES} | Bacs BCT-${codeX} & BCT-${codeY} | Total: ${TOTAL_BACS} bacs`;
+            
+            const progress = (currentPage / TOTAL_PAGES) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+            
+            document.getElementById('btnPrev').disabled = currentPage <= 1;
+            document.getElementById('btnNext').disabled = currentPage >= TOTAL_PAGES;
+        }
+        
+        function prevPage() {
+            if (currentPage > 1) {
+                generatePage(currentPage - 1);
+            }
+        }
+        
+        function nextPage() {
+            if (currentPage < TOTAL_PAGES) {
+                generatePage(currentPage + 1);
+            }
+        }
+        
+        function showToast(message, color = '#28a745') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.background = color;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+        
+        function printAll() {
+            if (confirm(`Voulez-vous vraiment imprimer les ${TOTAL_PAGES} pages d'étiquettes?\n\nCela représente ${TOTAL_BACS} bacs avec 4 étiquettes par bac.`)) {
+                showToast(`🖨️ Préparation de l'impression de ${TOTAL_PAGES} pages...`, '#667eea');
+                setTimeout(() => {
+                    window.print();
+                }, 1000);
+            }
+        }
+        
+        document.getElementById('pageNum').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                generatePage();
+            }
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            
+            if (e.key === 'ArrowLeft') prevPage();
+            if (e.key === 'ArrowRight') nextPage();
+            if (e.key === 'Home') generatePage(1);
+            if (e.key === 'End') generatePage(TOTAL_PAGES);
+            if (e.ctrlKey && e.key === 'p') {
+                e.preventDefault();
+                window.print();
+            }
+        });
+        
+        generatePage(1);
+        showToast('✨ Générateur chargé! 200 bacs prêts.', '#667eea');
+    </script>
+</body>
+</html>
